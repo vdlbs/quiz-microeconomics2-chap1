@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz Microéconomie — Chapitre 1 (Style Wooclap)</title>
+  <style>
+    body{font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f5f7fb; color:#0f172a; margin:0}
+    .container{max-width:920px;margin:28px auto;padding:20px;background:white;border-radius:12px;box-shadow:0 8px 30px rgba(15,23,42,0.08)}
+    h1{font-size:22px;margin:0 0 6px}
+    .meta{color:#475569;margin-bottom:18px}
+    .question{padding:16px;border-radius:10px;border:1px solid #e6eef8;margin-bottom:12px;background:linear-gradient(180deg,#ffffff,#fbfdff)}
+    .answers{margin-top:8px}
+    .answers label{display:block;padding:8px 10px;border-radius:8px;border:1px solid transparent;margin:8px 0;cursor:pointer}
+    .answers input[type=radio],.answers input[type=checkbox]{margin-right:8px}
+    .answers label:hover{background:#f1f8ff}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:12px}
+    button{background:#0ea5a4;color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid #cbd5e1;color:#0f172a}
+    .timer{margin-left:auto;color:#334155}
+    .feedback{margin-top:10px;padding:10px;border-radius:8px}
+    .correct{background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46}
+    .wrong{background:#fff1f2;border:1px solid #fecaca;color:#991b1b}
+    .explanation{margin-top:8px;color:#334155;font-size:14px}
+    .summary{padding:16px;border-radius:12px;background:linear-gradient(180deg,#ffffff,#1672ce);margin-top:16px}
+    canvas{max-width:100%}
+    .small{font-size:13px;color:#64748b}
+    footer{margin-top:18px;text-align:center;color:#64748b}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Quiz interactif — Microéconomie (Chapitre 1 : Théorie de l’offre)</h1>
+    <div class="meta">15 questions • Timer par question • Feedback instantané • Corrigé inclus</div>
+
+    <div id="quiz"></div>
+
+    <div class="controls">
+      <button id="prevBtn" class="ghost">← Précédent</button>
+      <button id="nextBtn">Suivant →</button>
+      <div class="timer small" id="timer">Temps restant : -</div>
+    </div>
+
+    <div id="summary" class="summary" style="display:none">
+      <h2>Résultats</h2>
+      <p id="scoreText"></p>
+      <canvas id="resultChart" width="600" height="200"></canvas>
+      <div style="margin-top:12px;"><button id="restart">Recommencer le quiz</button></div>
+    </div>
+
+    <footer>Généré à partir du PDF envoyé — Quiz éducatif pour révision.</footer>
+  </div>
+
+<script>
+// Questions (français). Chaque question a: type (mcq, tf, match, calc), text, choices array, correct (index(es)), explanation
+const questions = [
+  {id:1,type:'mcq',text:'Parmi les hypothèses de la concurrence pure et parfaite (CPP), laquelle n’en fait pas partie ?',
+    choices:['Atomicité du marché','Homogénéité du produit','Barrières fortes à l’entrée','Information parfaite'],correct:[2],explanation:'La CPP suppose libre entrée/sortie → il ne doit pas y avoir de barrières.'},
+  {id:2,type:'mcq',text:'La fonction de production exprime :',
+    choices:['Le lien entre les prix et la demande','La relation entre inputs et outputs','La maximisation du profit','L’évolution des coûts fixes'],correct:[1],explanation:'La fonction de production relie quantités de facteurs (inputs) et quantité produite (output).'},
+  {id:3,type:'mcq',text:'La productivité marginale du travail correspond à :',
+    choices:['La variation du coût moyen quand le travail varie','L’output supplémentaire produit par une unité de travail supplémentaire','La pente de la courbe de coût marginal','Le ratio entre capital et travail'],correct:[1],explanation:'Pm_L = ΔY / ΔL.'},
+  {id:4,type:'tf',text:'Une isoquante représente l’ensemble des combinaisons d’inputs donnant le même niveau de production.',choices:['Vrai','Faux'],correct:[0],explanation:'Définition même de l’isoquante.'},
+  {id:5,type:'tf',text:'Si la technologie est strictement convexe, une combinaison moyenne d’inputs produit moins que les points initiaux.',choices:['Vrai','Faux'],correct:[1],explanation:'Convexité → la combinaison moyenne produit au moins autant, en pratique plus pour strictement convexe.'},
+  {id:6,type:'tf',text:'Le TMST correspond à la pente de l’isoquante et mesure la quantité de capital à substituer au travail pour maintenir la production constante.',choices:['Vrai','Faux'],correct:[0],explanation:'TMST = ΔK/ΔL (pente isoquante) ; mesure la substitution entre facteurs.'},
+  {id:7,type:'calc',text:'Une entreprise produit 10 unités. Le coût total actuel est de 40 €. Le coût marginal d’une unité supplémentaire est de 1 €. Quel sera le nouveau coût moyen si elle produit 11 unités ?',choices:[],correct:3.7273,explanation:'CT nouveau = 41 ; CM = 41/11 ≈ 3,73 €.'},
+  {id:8,type:'mcq',text:'Si les rendements d’échelle sont croissants, cela signifie que :',
+    choices:['La production augmente plus que proportionnellement aux inputs','La production augmente moins vite que les inputs','Les coûts unitaires augmentent','Les inputs sont fixes à long terme'],correct:[0],explanation:'Rendements d’échelle croissants → production croît plus que proportionnellement.'},
+  {id:9,type:'mcq',text:'Quelle équation représente une droite d’isocoût ?',
+    choices:['C = p_L + p_K','C = p_L × L + p_K × K','C = L + K','C = Y / Q'],correct:[1],explanation:'Coût total = somme des prix des facteurs × quantités.'},
+  {id:10,type:'mcq',text:'Le choix optimal du producteur se trouve au point où :',
+    choices:['TMST = 0','TMST = - p_L / p_K','TMST = coût marginal','TMST = coût fixe moyen'],correct:[1],explanation:'Condition d’optimalité: TMST = -p_L/p_K (si solution intérieure).'},
+  {id:11,type:'tf',text:'À court terme, tous les facteurs de production sont variables.',choices:['Vrai','Faux'],correct:[1],explanation:'À court terme, certains facteurs (ex: capital) sont fixes.'},
+  {id:12,type:'tf',text:'Une entreprise peut réduire son coût moyen à long terme en augmentant sa taille si elle bénéficie d’économies d’échelle.',choices:['Vrai','Faux'],correct:[0],explanation:'Économies d’échelle → baisse du coût unitaire avec le volume.'},
+  {id:13,type:'mcq',text:'Une technologie de type Cobb-Douglas s’écrit généralement sous la forme :',
+    choices:['Q = aK + bL','Q = min(aK, bL)','Q = aK^{α}L^{β}','Q = aKL + b'],correct:[2],explanation:'Forme typique Cobb-Douglas : Q = a K^α L^β.'},
+  {id:14,type:'mcq',text:'Quand les facteurs sont parfaitement substituables, la fonction de production est :',
+    choices:['Q = aK + bL','Q = min(aK, bL)','Q = aK^{α}L^{β}','Aucune des réponses ci‑dessus'],correct:[0],explanation:'Parfaitement substituables → fonction linéaire aK + bL.'},
+  {id:15,type:'mcq',text:'Quand les coûts marginaux sont inférieurs aux coûts moyens :',
+    choices:['Les coûts moyens baissent','Les coûts moyens augmentent','Les coûts moyens sont constants','Impossible à déterminer'],correct:[0],explanation:'Relation classique : si Cm < CM alors CM décroît.'}
+];
+
+let current = 0; const total = questions.length;
+let answers = new Array(total).fill(null);
+let timers = new Array(total).fill(null);
+const QUESTION_TIME = 30; // seconds per question
+let timeLeft = QUESTION_TIME; let intervalId = null;
+
+const quizDiv = document.getElementById('quiz');
+const timerDiv = document.getElementById('timer');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const summaryDiv = document.getElementById('summary');
+const scoreText = document.getElementById('scoreText');
+
+// autoNext declared as function (hoisted) to avoid reference errors if timer triggers early
+function autoNext(){ saveTimer(current); if(current<total-1){ current++; renderQuestion(current); } else finishQuiz(); }
+
+function renderQuestion(i){
+  const q = questions[i];
+  quizDiv.innerHTML = '';
+  const qbox = document.createElement('div'); qbox.className='question';
+  qbox.innerHTML = `<strong>Question ${i+1} / ${total}</strong><div style="margin-top:8px;font-size:16px">${q.text}</div>`;
+
+  const ansDiv = document.createElement('div'); ansDiv.className='answers';
+
+  if(q.type==='mcq' || q.type==='tf'){
+    q.choices.forEach((c,idx)=>{
+      const id = `q${i}_c${idx}`;
+      const lab = document.createElement('label');
+      lab.htmlFor = id; lab.innerText = c;
+      const inp = document.createElement('input'); inp.type='radio'; inp.name='q'+i; inp.id=id; inp.value=idx;
+      if(answers[i]!==null && answers[i]===idx) inp.checked=true;
+      inp.addEventListener('change',()=>{ answers[i]=idx; showFeedback(i); saveTimer(i); });
+      lab.prepend(inp); ansDiv.appendChild(lab);
+    });
+  } else if(q.type==='calc'){
+    const p = document.createElement('div'); p.innerHTML=`<input id="calcInput" placeholder="Réponse numérique (ex : 3.73)" style="padding:8px;border-radius:8px;border:1px solid #e2e8f0;width:200px"> <button id="calcBtn">Valider</button>`;
+    ansDiv.appendChild(p);
+    const calcInput = p.querySelector('#calcInput'); const calcBtn = p.querySelector('#calcBtn');
+    if(answers[i]!==null) calcInput.value = answers[i];
+    calcBtn.addEventListener('click',()=>{ answers[i]=calcInput.value.trim(); showFeedback(i); saveTimer(i); });
+  }
+
+  qbox.appendChild(ansDiv);
+  const fb = document.createElement('div'); fb.id='fb'+i; fb.className='feedback'; qbox.appendChild(fb);
+  quizDiv.appendChild(qbox);
+  startTimer(i);
+  showFeedback(i);
+}
+
+function startTimer(i){
+  // load previous time if exists
+  if(intervalId) clearInterval(intervalId);
+  timeLeft = timers[i]===null?QUESTION_TIME:timers[i];
+  timerDiv.innerText = `Temps restant : ${timeLeft}s`;
+  intervalId = setInterval(()=>{
+    timeLeft--; timers[current]=timeLeft;
+    timerDiv.innerText = `Temps restant : ${timeLeft}s`;
+    if(timeLeft<=0){ clearInterval(intervalId); autoNext(); }
+  },1000);
+}
+
+function saveTimer(i){ timers[i]=timeLeft; }
+
+function showFeedback(i){
+  const q=questions[i]; const fb=document.getElementById('fb'+i);
+  fb.innerHTML='';
+  const ans = answers[i];
+  if(ans===null){ fb.innerHTML='<div class="small">Répondre pour voir le feedback et l\'explication.</div>'; return; }
+  let correct=false;
+  if(q.type==='mcq' || q.type==='tf'){
+    if(Array.isArray(q.correct)) correct = q.correct.includes(Number(ans));
+  } else if(q.type==='calc'){
+    const num = parseFloat(String(ans).replace(',','.'));
+    if(!isNaN(num)) correct = Math.abs(num - q.correct) < 0.05; // tolérance
+  }
+  const div=document.createElement('div');
+  div.className = correct? 'correct' : 'wrong';
+  div.innerHTML = correct? '<strong>✅ Correct</strong>' : '<strong>❌ Incorrect</strong>';
+  const expl = document.createElement('div'); expl.className='explanation'; expl.innerText = q.explanation;
+  fb.appendChild(div); fb.appendChild(expl);
+}
+
+prevBtn.addEventListener('click',()=>{ if(current>0){ saveTimer(current); current--; renderQuestion(current); } });
+nextBtn.addEventListener('click',()=>{ saveTimer(current); if(current<total-1){ current++; renderQuestion(current); } else finishQuiz(); });
+
+function finishQuiz(){ if(intervalId) clearInterval(intervalId); // evaluate
+  let score=0; let answered=0;
+  for(let i=0;i<total;i++){
+    const q=questions[i]; const a=answers[i];
+    if(a!==null){ answered++; if(q.type==='mcq' || q.type==='tf'){ if(q.correct.includes(Number(a))) score++; }
+      else if(q.type==='calc'){ const num = parseFloat(String(a).replace(',','.')); if(!isNaN(num) && Math.abs(num-q.correct)<0.05) score++; }
+    }
+  }
+  quizDiv.style.display='none'; document.querySelector('.controls').style.display='none'; summaryDiv.style.display='block';
+  scoreText.innerHTML = `<strong>${score} / ${total}</strong> (${Math.round(100*score/total)}%) — Questions répondues : ${answered}/${total}`;
+  drawChart(score, total-score);
+}
+
+function drawChart(correct, wrong){ const c=document.getElementById('resultChart'); const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+  // simple bar chart
+  const max = Math.max(correct, wrong, 1);
+  const pad=40; const w = c.width - pad*2; const h = c.height - pad*2;
+  const barW = 100;
+  // axes
+  ctx.fillStyle='#0f172a'; ctx.font='14px sans-serif'; ctx.fillText('Résultats',10,18);
+  // correct bar
+  const x1 = pad + 30; const x2 = x1 + barW + 60;
+  ctx.fillStyle='#10b981'; ctx.fillRect(x1, pad + (h - (correct/max)*h), barW, (correct/max)*h);
+  ctx.fillStyle='#0f172a'; ctx.fillText(`Correct: ${correct}`, x1, pad + h + 20);
+  // wrong bar
+  ctx.fillStyle='#ef4444'; ctx.fillRect(x2, pad + (h - (wrong/max)*h), barW, (wrong/max)*h);
+  ctx.fillStyle='#0f172a'; ctx.fillText(`Incorrect: ${wrong}`, x2, pad + h + 20);
+}
+
+// initialize
+renderQuestion(0);
+
+// restart
+const restartBtn = document.getElementById('restart');
+if(restartBtn){ restartBtn.addEventListener('click',()=>{ answers=new Array(total).fill(null); timers=new Array(total).fill(null); current=0; quizDiv.style.display='block'; document.querySelector('.controls').style.display='flex'; summaryDiv.style.display='none'; renderQuestion(0); }); }
+
+</script>
+</body>
+</html>
